@@ -11,8 +11,16 @@ const int wKingLookup[28] =
 
 Godel kingsGodelLookup[10][64];
 
-int kingSquareLookup[528][2];
+int kingSquareLookup[TWO_KING_POSS][2];
 
+#define WHITE_PIECES 1
+//#define BLACK_PIECES 0
+
+const int whitePieces[WHITE_PIECES] = { immobilizer };
+
+#ifdef BLACK_PIECES
+const int blackPieces[BLACK_PIECES] = { };
+#endif
 
 void populateGodelLookups()
 {
@@ -57,5 +65,66 @@ void populateGodelLookups()
             }
         }
     }
+}
 
+void clearPosition()
+{
+    // clear piece lists
+    U64 totalBoard = position[white] | position[black];
+    while (totalBoard)
+    {
+        pieceList[pop_lsb(totalBoard)] = 0;
+        totalBoard &= totalBoard - 1;
+    }
+
+    // clear position
+    for (int i = 0; i < 17; i++)
+    {
+        position[i] = 0ULL;
+    }
+}
+
+void loadGodelNumber(Godel godel)
+{
+    clearPosition();
+
+    U64 whiteBoard = 0ULL;
+    U64 blackBoard = 0ULL;
+
+    // extract king squares and remove them from the godel number
+    int kingId = godel % TWO_KING_POSS;
+    godel /= TWO_KING_POSS;
+
+    int whiteKingSq = kingSquareLookup[kingId][0];
+    int blackKingSq = kingSquareLookup[kingId][1];
+
+    position[white + king] = 1ULL << whiteKingSq;
+    whiteBoard = position[white + king];
+    position[black + king] = 1ULL << blackKingSq;
+    blackBoard = position[black + king];
+
+    pieceList[whiteKingSq] = king;
+    pieceList[blackKingSq] = king;
+
+    // extract the squares of the white pieces
+    position[white + immobilizer] = 1ULL << godel;
+    whiteBoard |= 1ULL << godel;
+    pieceList[godel] = immobilizer;
+
+    // update white and black boards
+    position[white] = whiteBoard;
+    position[black] = blackBoard;
+}
+
+Godel getGodelNumber(void)
+{
+    int whiteKingSq = pop_lsb(position[white + king]);
+    int blackKingSq = pop_lsb(position[black + king]);
+
+    int* transform = transforms[whiteKingSq][blackKingSq];
+
+    whiteKingSq = transform[whiteKingSq];
+    blackKingSq = transform[blackKingSq];
+
+    return kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq] + pop_lsb(position[white + immobilizer]) * TWO_KING_POSS;
 }

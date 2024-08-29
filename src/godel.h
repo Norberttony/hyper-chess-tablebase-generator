@@ -8,6 +8,10 @@
 
 typedef uint32_t Godel;
 
+// number of possible positions achievable with two kings
+#define TWO_KING_POSS 528
+
+
 // gives the smallest number that represents the white king's current square, all symmetries removed
 // index should be white king's square after the necessary transformations.
 extern const int wKingLookup[28];
@@ -17,11 +21,16 @@ extern Godel kingsGodelLookup[10][64];
 
 // gives 2 squares of the white king and black king respectively, given a Godel number representing
 // just the two kings
-extern int kingSquareLookup[528][2];
+extern int kingSquareLookup[TWO_KING_POSS][2];
 
 
 // populates the kingsGodelLookup and kingSquareLookup arrays
 void populateGodelLookups();
 
+// loads the given godel number into the position
+void loadGodelNumber(Godel);
+
+// returns the Godel number of the current position
+Godel getGodelNumber(void);
 
 #endif
