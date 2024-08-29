@@ -9,6 +9,8 @@
 // position.
 extern int* transforms[64][64];
 
+extern const int isUnderDiagonal[64];
+
 // populates the transforms array
 void populateTransforms();
 

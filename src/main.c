@@ -1,25 +1,31 @@
 
 #include "transform.h"
+#include "godel.h"
 
 #include <stdio.h>
 
 int main(void)
 {
     populateTransforms();
+    populateGodelLookups();
 
-    loadFEN("8/8/8/k7/8/8/6K1/8 w -");
+    int godel = 527;
+    int wSq = kingSquareLookup[godel][0];
+    int bSq = kingSquareLookup[godel][1];
+
+    // update position bitboards
+    position[white] = 1ULL << wSq;
+    position[white + king] = 1ULL << wSq;
+
+    position[black] = 1ULL << bSq;
+    position[black + king] = 1ULL << bSq;
+
+    // update piecelists
+    pieceList[wSq] = king;
+    pieceList[bSq] = king;
+
+    // print the board
     prettyPrintBoard();
-
-    int whiteSq = pop_lsb(position[white + king]);
-    int blackSq = pop_lsb(position[black + king]);
-
-    // print the transformations
-    int* transform = transforms[whiteSq][blackSq];
-    puts("White king:");
-    printf("%s -> %s\n", squareNames[whiteSq], squareNames[transform[whiteSq]]);
-
-    puts("Black king:");
-    printf("%s -> %s\n", squareNames[blackSq], squareNames[transform[blackSq]]);
 
     return 0;
 }
