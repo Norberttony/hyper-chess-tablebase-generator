@@ -177,29 +177,29 @@ void populateTransforms()
         setTransform(vert[i], (int*)&reflectVert);
     }
 
-    // reflect over A8 - H1 diagonal
+    // reflect over A1 - H8 diagonal
     const int a8h1[] = { h2, h3, h4, g3, g4, f4 };
     for (int i = 0; i < 6; i++)
     {
-        setTransform(a8h1[i], (int*)&reflectA8H1);
+        setTransform(a8h1[i], (int*)&reflectA1H8);
     }
 
-    // reflect over A1 - H8 diagonal
+    // reflect over A8 - H1 diagonal
     const int a1h8[] = { a7, a6, a5, b6, b5, c5 };
     for (int i = 0; i < 6; i++)
     {
-        setTransform(a1h8[i], (int*)&reflectA1H8);
+        setTransform(a1h8[i], (int*)&reflectA8H1);
     }
 
     // rotating 90* CC
-    const int rotCC[] = { f5, g6, g5, h7, h6, h5 };
+    const int rotCC[] = { a4, a3, a2, b4, b3, c4 };
     for (int i = 0; i < 6; i++)
     {
         setTransform(rotCC[i], (int*)&rotateCC);
     }
 
     // rotating 90* CCW
-    const int rotCCW[] = { a4, a3, a2, b4, b3, c4 };
+    const int rotCCW[] = { f5, g6, g5, h7, h6, h5 };
     for (int i = 0; i < 6; i++)
     {
         setTransform(rotCCW[i], (int*)&rotateCCW);
@@ -243,7 +243,7 @@ void populateTransforms()
         int wSq = e4h1[i];
         for (int j = 0; j < 64; j++)
         {
-            if (isUnderDiagonal[j])
+            if (isUnderDiagonal[reflectA1H8[j]])
             {
                 transforms[wSq][j] = (int*)&flip;
             }

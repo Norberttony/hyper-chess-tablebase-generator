@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.ejs": "html",
-        "defines.h": "c"
+        "defines.h": "c",
+        "unmove.h": "c"
     }
 }

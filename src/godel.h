@@ -23,14 +23,18 @@ extern Godel kingsGodelLookup[10][64];
 // just the two kings
 extern int kingSquareLookup[TWO_KING_POSS][2];
 
-
 // populates the kingsGodelLookup and kingSquareLookup arrays
 void populateGodelLookups();
 
 // loads the given godel number into the position
-void loadGodelNumber(Godel);
+int loadGodelNumber(Godel);
 
 // returns the Godel number of the current position
 Godel getGodelNumber(void);
+
+// returns the previous (endgame reference) Godel number of the current position.
+Godel getRefGodelNumber(void);
+
+void clearPosition(void);
 
 #endif

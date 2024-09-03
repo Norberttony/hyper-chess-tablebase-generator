@@ -336,6 +336,25 @@ int isAttackingKing()
 
 int isCheckmate()
 {
+    // toggle turn
+    toPlay = !toPlay * 8;
+    notToPlay = !notToPlay * 8;
+
+    // make sure king is actually attacked
+    // if not, then it cannot be checkmate.
+    if (!isAttackingKing())
+    {
+        // toggle turn back
+        toPlay = !toPlay * 8;
+        notToPlay = !notToPlay * 8;
+        return 0;
+    }
+
+    // toggle turn back
+    toPlay = !toPlay * 8;
+    notToPlay = !notToPlay * 8;
+
+
     // generate responses to the attack
     Move moves[MAX_MOVES];
     int size = generateMoves(moves);
@@ -349,18 +368,6 @@ int isCheckmate()
         }
     }
 
-    // toggle turn
-    toPlay = !toPlay * 8;
-    notToPlay = !notToPlay * 8;
-
-    // make sure king is actually attacked
-    // if not, then it's actually stalemate.
-    int isAttacked = isAttackingKing();
-
-    // toggle turn back
-    toPlay = !toPlay * 8;
-    notToPlay = !notToPlay * 8;
-
     // checkmate!!!
-    return isAttacked;
+    return 1;
 }

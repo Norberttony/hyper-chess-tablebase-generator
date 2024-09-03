@@ -16,7 +16,7 @@ int kingSquareLookup[TWO_KING_POSS][2];
 #define WHITE_PIECES 1
 //#define BLACK_PIECES 0
 
-const int whitePieces[WHITE_PIECES] = { immobilizer };
+const int whitePieces[WHITE_PIECES] = { straddler };
 
 #ifdef BLACK_PIECES
 const int blackPieces[BLACK_PIECES] = { };
@@ -67,7 +67,7 @@ void populateGodelLookups()
     }
 }
 
-void clearPosition()
+void clearPosition(void)
 {
     // clear piece lists
     U64 totalBoard = position[white] | position[black];
@@ -84,7 +84,7 @@ void clearPosition()
     }
 }
 
-void loadGodelNumber(Godel godel)
+int loadGodelNumber(Godel godel)
 {
     clearPosition();
 
@@ -107,13 +107,18 @@ void loadGodelNumber(Godel godel)
     pieceList[blackKingSq] = king;
 
     // extract the squares of the white pieces
-    position[white + immobilizer] = 1ULL << godel;
-    whiteBoard |= 1ULL << godel;
-    pieceList[godel] = immobilizer;
+    int* transform = transforms[whiteKingSq][blackKingSq];
+    int immSq = transform[godel];
+    position[white + whitePieces[0]] = 1ULL << immSq;
+    whiteBoard |= 1ULL << immSq;
+    pieceList[immSq] = whitePieces[0];
 
     // update white and black boards
     position[white] = whiteBoard;
     position[black] = blackBoard;
+
+    // return 1 if no pieces intersect and 0 if they do intersect
+    return position[white + king] != position[black + king] && position[white + king] != position[white + whitePieces[0]] && position[black + king] != position[white + whitePieces[0]];
 }
 
 Godel getGodelNumber(void)
@@ -126,5 +131,23 @@ Godel getGodelNumber(void)
     whiteKingSq = transform[whiteKingSq];
     blackKingSq = transform[blackKingSq];
 
-    return kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq] + pop_lsb(position[white + immobilizer]) * TWO_KING_POSS;
+    int pieceSq = pop_lsb(position[white + whitePieces[0]]);
+
+    return kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq] + transform[pieceSq] * TWO_KING_POSS;
+}
+
+Godel getRefGodelNumber(void)
+{
+    int whiteKingSq = pop_lsb(position[white + king]);
+    int blackKingSq = pop_lsb(position[black + king]);
+
+    int* transform = transforms[whiteKingSq][blackKingSq];
+
+    whiteKingSq = transform[whiteKingSq];
+    blackKingSq = transform[blackKingSq];
+
+    int pieceSq = pop_lsb(position[white + whitePieces[0]]);
+
+    return kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq] + transform[pieceSq] * TWO_KING_POSS;
+
 }
