@@ -11,6 +11,9 @@ typedef uint32_t Godel;
 // number of possible positions achievable with two kings
 #define TWO_KING_POSS 528
 
+#define WHITE_PIECES 1
+#define BLACK_PIECES 1
+
 
 // gives the smallest number that represents the white king's current square, all symmetries removed
 // index should be white king's square after the necessary transformations.

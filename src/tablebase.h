@@ -20,6 +20,7 @@ extern uint32_t *blackLoses;
 extern uint32_t *blackTemp;
 
 extern uint32_t *endgameRef;
+extern uint32_t *endgameRef2;
 
 
 int allocTablebase();

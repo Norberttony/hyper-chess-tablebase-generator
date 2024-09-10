@@ -2,16 +2,39 @@
 #include "tablebase.h"
 
 int fileSize = 0;
-Godel possibilities = 528 * 64;
+
+#ifndef BLACK_PIECES
+Godel possibilities = 528 * (1 << WHITE_PIECES * 6);
+#else
+Godel possibilities = 528 * (1 << (WHITE_PIECES + BLACK_PIECES) * 6);
+#endif
 
 uint32_t *whiteWins;
 uint32_t *blackLoses;
 uint32_t *blackTemp;
 
+uint32_t *endgameRef;
+uint32_t *endgameRef2;
+
+
+const int pieceTypeMasks[] =
+{
+    0b0000000,
+    0b0000001,
+    0b0000010,
+    0b0000100,
+    0b0001000,
+    0b0010000,
+    0b0100000,
+    0b1000000
+};
+
+
 // allocates memory for the tablebase
 int allocTablebase()
 {
     fileSize = (possibilities >> 5) + 1;
+    Godel refPoss = possibilities >> 6;
 
     // arrays that will be indexed by the Godel number and return 1 if the position belongs in
     // the set of positions
@@ -19,11 +42,23 @@ int allocTablebase()
     blackLoses = (uint32_t*)malloc(sizeof(uint32_t) * fileSize);
     blackTemp  = (uint32_t*)malloc(sizeof(uint32_t) * fileSize);
 
+    endgameRef = (uint32_t*)malloc(sizeof(uint32_t) * refPoss);
+    endgameRef2 = (uint32_t*)malloc(sizeof(uint32_t) * refPoss);
+
     if (!whiteWins || !blackLoses || !blackTemp)
     {
         puts("Not enough memory to allocate tablebase. Check the number of pieces and possible positions.");
         return -1;
     }
+
+
+    FILE *file = fopen("KRvK-w.bin", "rb");
+    fread(endgameRef, sizeof(uint32_t), refPoss, file);
+    fclose(file);
+
+    file = fopen("KUvK-w.bin", "rb");
+    fread(endgameRef2, sizeof(uint32_t), refPoss, file);
+    fclose(file);
 
    return 1;
 }
@@ -58,17 +93,14 @@ void initTablebase()
         if (isCheckmate())
         {
             set_bit32_arr(blackLoses, i);
-            if (i == 21248)
-            {
-                prettyPrintBoard();
-                puts("The board above is checkmate for white.");
-            }
         }
         else
         {
             clr_bit32_arr(blackLoses, i);
         }
     }
+
+    puts("Writing to file...");
 
     // write the results to a file
     FILE *fileB = fopen("B0.bin", "wb");
@@ -101,8 +133,6 @@ int tablebaseStep(int depth)
             int size = generateUnmoves((Unmove*)unmoves);
             for (int j = 0; j < size; j++)
             {
-                loadGodelNumber(i);
-
                 // don't unmake a move that leaves opponent king in check.
                 toPlay = black;
                 notToPlay = white;
@@ -114,6 +144,7 @@ int tablebaseStep(int depth)
                 notToPlay = black;
                 if (isAttackingKing())
                 {
+                    unmakeUnmove(unmove);
                     continue;
                 }
 
@@ -123,6 +154,8 @@ int tablebaseStep(int depth)
 
                 // mark this position as winnable!
                 set_bit32_arr(whiteWins, changed);
+
+                unmakeUnmove(unmove);
             }
         }
     }
@@ -153,8 +186,6 @@ int tablebaseStep(int depth)
             int size = generateUnmoves((Unmove*)unmoves);
             for (int j = 0; j < size; j++)
             {
-                loadGodelNumber(i);
-
                 // don't unmake a move that leaves opponent king in check.
                 toPlay = white;
                 notToPlay = black;
@@ -166,11 +197,14 @@ int tablebaseStep(int depth)
                 notToPlay = white;
                 if (isAttackingKing())
                 {
+                    unmakeUnmove(unmove);
                     continue;
                 }
 
                 // mark this position as losable
                 set_bit32_arr(blackTemp, getGodelNumber());
+
+                unmakeUnmove(unmove);
             }
         }
     }
@@ -185,7 +219,6 @@ int tablebaseStep(int depth)
     {
         if (get_bit32_arr(blackTemp, i) && loadGodelNumber(i))
         {
-
             Move moves[MAX_MOVES];
             int size = generateMoves((Move*)moves);
 
@@ -208,6 +241,16 @@ int tablebaseStep(int depth)
                 // to-do: should probe sub-databases in order to determine win/loss.
                 if (move & move_captMask)
                 {
+                    // check the reference to see if this position is still winning for white.
+                    int captType = moveCapturePieceTypes(move);
+                    if (captType & pieceTypeMasks[immobilizer] && endgameRef && get_bit32_arr(endgameRef, getRefGodelNumber()))
+                    {
+                        continue;
+                    }
+                    else if (captType & pieceTypeMasks[coordinator] && endgameRef2 && get_bit32_arr(endgameRef2, getRefGodelNumber()))
+                    {
+                        continue;
+                    }
                     // alright, so it's just this one piece that got captured. this is a draw then.
                     alwaysWinning = 0;
                     break;
@@ -253,7 +296,7 @@ void createDepthToMateFile(int maxDepth)
     for (int i = 0; i < possibilities; i++)
     {
         depthToMateW[i] = 0;
-        depthToMateL[i] = 1;
+        depthToMateL[i] = 65535;
     }
 
 
@@ -274,7 +317,7 @@ void createDepthToMateFile(int maxDepth)
         {
             continue;
         }
-        if (depthToMateL[g] == 1 && get_bit32_arr(losses, g))
+        if (depthToMateL[g] == 65535 && get_bit32_arr(losses, g))
         {
             // first time encountering a black loss here
             depthToMateL[g] = 0;
@@ -306,19 +349,11 @@ void createDepthToMateFile(int maxDepth)
                 // first time encountering a white win here
                 depthToMateW[g] = d * 2 - 1;
             }
-            if (depthToMateL[g] == 1 && get_bit32_arr(losses, g))
+            if (depthToMateL[g] == 65535 && get_bit32_arr(losses, g))
             {
                 // first time encountering a black loss here
                 depthToMateL[g] = d * 2;
             }
-        }
-    }
-
-    for (Godel g = 0; g < possibilities; g++)
-    {
-        if (depthToMateL[g] == 1)
-        {
-            depthToMateL[g] = 0;
         }
     }
 
@@ -334,3 +369,42 @@ void createDepthToMateFile(int maxDepth)
     fwrite(depthToMateL, sizeof(unsigned short int), possibilities, fileDTML);
     fclose(fileDTML);
 }
+
+int moveCapturePieceTypes(Move m)
+{
+    switch (m & move_typeMask)
+    {
+        case straddler:
+            return
+                pieceTypeMasks[(m & move_c1Mask) >> 15] +
+                pieceTypeMasks[(m & move_c2Mask) >> 18] +
+                pieceTypeMasks[(m & move_c3Mask) >> 21] +
+                pieceTypeMasks[(m & move_c4Mask) >> 24];
+        case retractor:
+        case springer:
+            return pieceTypeMasks[(m & move_c1Mask) >> 15];
+        case coordinator:
+            return
+                pieceTypeMasks[(m & move_c1Mask) >> 15] +
+                pieceTypeMasks[(m & move_c2Mask) >> 18];
+        case immobilizer:
+            return 0;
+        case chameleon:
+            return
+                pieceTypeMasks[(m & move_cham_u_mask) > 0] +
+                pieceTypeMasks[(m & move_cham_l_mask) > 0] +
+                pieceTypeMasks[(m & move_cham_r_mask) > 0] +
+                pieceTypeMasks[(m & move_cham_d_mask) > 0] +
+
+                ((m & (move_cham_d1_mask | move_cham_d2_mask)) > 0) * pieceTypeMasks[coordinator] +
+                ((m & move_cham_q_mask) > 0) * pieceTypeMasks[retractor] +
+                ((m & move_cham_n_mask) > 0) * pieceTypeMasks[springer];
+        case king:
+            return
+                pieceTypeMasks[(m & move_c1Mask) >> 15] +
+                pieceTypeMasks[(m & move_c2Mask) >> 18] +
+                pieceTypeMasks[(m & move_c3Mask) >> 21] +
+                ((m & move_kingcmask) > 0) * pieceTypeMasks[coordinator];
+    }
+}
+

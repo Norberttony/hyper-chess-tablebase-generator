@@ -17,7 +17,7 @@ enum
 // piece types
 enum
 {
-    _,
+    empty,
     straddler,
     retractor,
     springer,

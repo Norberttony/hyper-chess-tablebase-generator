@@ -13,13 +13,9 @@ Godel kingsGodelLookup[10][64];
 
 int kingSquareLookup[TWO_KING_POSS][2];
 
-#define WHITE_PIECES 1
-//#define BLACK_PIECES 0
-
-const int whitePieces[WHITE_PIECES] = { straddler };
-
+const int whitePieces[WHITE_PIECES] = { immobilizer };
 #ifdef BLACK_PIECES
-const int blackPieces[BLACK_PIECES] = { };
+const int blackPieces[BLACK_PIECES] = { coordinator };
 #endif
 
 void populateGodelLookups()
@@ -88,9 +84,6 @@ int loadGodelNumber(Godel godel)
 {
     clearPosition();
 
-    U64 whiteBoard = 0ULL;
-    U64 blackBoard = 0ULL;
-
     // extract king squares and remove them from the godel number
     int kingId = godel % TWO_KING_POSS;
     godel /= TWO_KING_POSS;
@@ -99,26 +92,59 @@ int loadGodelNumber(Godel godel)
     int blackKingSq = kingSquareLookup[kingId][1];
 
     position[white + king] = 1ULL << whiteKingSq;
-    whiteBoard = position[white + king];
     position[black + king] = 1ULL << blackKingSq;
-    blackBoard = position[black + king];
 
     pieceList[whiteKingSq] = king;
     pieceList[blackKingSq] = king;
 
-    // extract the squares of the white pieces
-    int* transform = transforms[whiteKingSq][blackKingSq];
-    int immSq = transform[godel];
-    position[white + whitePieces[0]] = 1ULL << immSq;
-    whiteBoard |= 1ULL << immSq;
-    pieceList[immSq] = whitePieces[0];
 
-    // update white and black boards
-    position[white] = whiteBoard;
-    position[black] = blackBoard;
+    position[white] = position[white + king];
+    position[black] = position[black + king];
+
+    int* transform = transforms[whiteKingSq][blackKingSq];
+
+    // extract the squares of the white pieces
+    for (int i = 0; i < WHITE_PIECES; i++)
+    {
+        int pieceSq = transform[godel & 63];
+
+        // avoid placing two pieces on the same square
+        if (pieceList[pieceSq])
+        {
+            return 0;
+        }
+        
+        position[white + whitePieces[i]] |= 1ULL << pieceSq;
+        position[white] |= 1ULL << pieceSq;
+
+        pieceList[pieceSq] = whitePieces[i];
+
+        godel >>= 6;
+    }
+
+    // extract the squares of the black pieces
+    #ifdef BLACK_PIECES
+    for (int i = 0; i < BLACK_PIECES; i++)
+    {
+        int pieceSq = transform[godel & 63];
+
+        // avoid placing two pieces on the same square
+        if (pieceList[pieceSq])
+        {
+            return 0;
+        }
+        
+        position[black + blackPieces[i]] |= 1ULL << pieceSq;
+        position[black] |= 1ULL << pieceSq;
+
+        pieceList[pieceSq] = blackPieces[i];
+
+        godel >>= 6;
+    }
+    #endif
 
     // return 1 if no pieces intersect and 0 if they do intersect
-    return position[white + king] != position[black + king] && position[white + king] != position[white + whitePieces[0]] && position[black + king] != position[white + whitePieces[0]];
+    return (position[white + king] & position[black + king]) == 0;
 }
 
 Godel getGodelNumber(void)
@@ -131,9 +157,43 @@ Godel getGodelNumber(void)
     whiteKingSq = transform[whiteKingSq];
     blackKingSq = transform[blackKingSq];
 
-    int pieceSq = pop_lsb(position[white + whitePieces[0]]);
+    Godel g = kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq];
 
-    return kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq] + transform[pieceSq] * TWO_KING_POSS;
+    U64 positionCopy[17];
+    for (int i = 0; i < WHITE_PIECES; i++)
+    {
+        positionCopy[white + whitePieces[i]] = position[white + whitePieces[i]];
+    }
+    #ifdef BLACK_PIECES
+    for (int i = 0; i < BLACK_PIECES; i++)
+    {
+        positionCopy[black + blackPieces[i]] = position[black + blackPieces[i]];
+    }
+    #endif
+
+    // fetch white pieces
+    Godel gw = 0;
+    for (int i = 0; i < WHITE_PIECES; i++)
+    {
+        int offset = white + whitePieces[i];
+        int pieceSq = pop_lsb(positionCopy[offset]);
+        gw += transform[pieceSq] << i * 6;
+        positionCopy[offset] &= positionCopy[offset] - 1;
+    }
+
+    // fetch black pieces
+    Godel gb = 0;
+    #ifdef BLACK_PIECES
+    for (int i = 0; i < BLACK_PIECES; i++)
+    {
+        int offset = black + blackPieces[i];
+        int pieceSq = pop_lsb(positionCopy[offset]);
+        gw += transform[pieceSq] << (i + WHITE_PIECES) * 6;
+        positionCopy[offset] &= positionCopy[offset] - 1;
+    }
+    #endif
+
+    return g + (gw + gb) * TWO_KING_POSS;
 }
 
 Godel getRefGodelNumber(void)
@@ -146,8 +206,10 @@ Godel getRefGodelNumber(void)
     whiteKingSq = transform[whiteKingSq];
     blackKingSq = transform[blackKingSq];
 
-    int pieceSq = pop_lsb(position[white + whitePieces[0]]);
+    Godel g = kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq];
 
-    return kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq] + transform[pieceSq] * TWO_KING_POSS;
+    int pieceSq = pop_lsb(position[white + springer]);
+    g += transform[pieceSq] << 6;
 
+    return g;
 }

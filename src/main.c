@@ -19,15 +19,10 @@ int main(void)
     populateTransforms();
     populateGodelLookups();
 
-    loadFEN("k4R2/8/1K6/8/8/8/8/8 b -");
-    prettyPrintBoard();
-    printf("Godel number: %lu\n", getGodelNumber());
-
-    loadFEN("k7/2K5/8/8/8/R7/8/8 b -");
-    prettyPrintBoard();
-    printf("Godel number: %lu\n", getGodelNumber());
-
-    loadGodelNumber(3096);
+    if (!loadGodelNumber(2962))
+    {
+        puts("ILLEGAL GODEL NUMBER");
+    }
     prettyPrintBoard();
     printf("Godel number: %lu\n", getGodelNumber());
 
@@ -59,7 +54,7 @@ int main(void)
     fread(DTML, sizeof(unsigned short int), possibilities, DTMLFile);
     fclose(DTMLFile);
 
-    loadGodelNumber(2363);
+    loadFEN("r2k3/8/8/8/8/8/8/U3K3 w -");
 
     userDemo();
 
