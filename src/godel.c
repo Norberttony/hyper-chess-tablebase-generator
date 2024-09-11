@@ -13,9 +13,9 @@ Godel kingsGodelLookup[10][64];
 
 int kingSquareLookup[TWO_KING_POSS][2];
 
-const int whitePieces[WHITE_PIECES] = { immobilizer };
+const int whitePieces[WHITE_PIECES] = { coordinator };
 #ifdef BLACK_PIECES
-const int blackPieces[BLACK_PIECES] = { coordinator };
+const int blackPieces[BLACK_PIECES] = { straddler };
 #endif
 
 void populateGodelLookups()
@@ -212,4 +212,44 @@ Godel getRefGodelNumber(void)
     g += transform[pieceSq] << 6;
 
     return g;
+}
+
+#define TRI_DIAG_1 (1ULL << a8 | 1ULL << b7 | 1ULL << c6 | 1ULL << d5 | 1ULL << e4 | 1ULL << f3 | 1ULL << g2 | 1ULL << h1)
+#define TRI_DIAG_3 (1ULL << a1 | 1ULL << b2 | 1ULL << c3 | 1ULL << d4 | 1ULL << e5 | 1ULL << f6 | 1ULL << g7 | 1ULL << h8)
+
+Godel getThirdPieceSymmetryGodel(Godel g)
+{
+    // if the kings aren't on the tri diag, then it cannot be a third piece symmetry
+    U64 whiteKing = position[white + king];
+    U64 blackKing = position[black + king];
+    int isDiag = (TRI_DIAG_1 & whiteKing && TRI_DIAG_1 & blackKing) || (TRI_DIAG_3 & whiteKing && TRI_DIAG_3 & blackKing);
+    if (!isDiag)
+    {
+        return 0;
+    }
+
+    // the king's godel numbers would not change, but the other piece's squares might.
+    Godel kings = g % TWO_KING_POSS;
+    Godel symmG = 0;
+    g /= TWO_KING_POSS;
+
+    // check white pieces
+    for (int i = 0; i < WHITE_PIECES; i++)
+    {
+        symmG <<= 6;
+        symmG += reflectA8H1[g & 63];
+        g >>= 6;
+    }
+
+    // check black pieces
+    #ifdef BLACK_PIECES
+    for (int i = 0; i < BLACK_PIECES; i++)
+    {
+        symmG <<= 6;
+        symmG += reflectA8H1[g & 63];
+        g >>= 6;
+    }
+    #endif
+
+    return kings + symmG * TWO_KING_POSS;
 }

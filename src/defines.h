@@ -6,7 +6,13 @@
 
 #include "bitboard-utility.h"
 
+
+#define WHITE_PIECES 1
+// #define BLACK_PIECES 1
+
+
 #define get_zobrist_hash(sq, type, isWhite) zobristHashes[64 * type + sq + 64 * 7 * !isWhite]
+
 
 // whose side it is to play
 enum

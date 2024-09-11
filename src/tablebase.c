@@ -93,6 +93,13 @@ void initTablebase()
         if (isCheckmate())
         {
             set_bit32_arr(blackLoses, i);
+
+            Godel s = getThirdPieceSymmetryGodel(i);
+
+            if (s)
+            {
+                set_bit32_arr(blackLoses, s);
+            }
         }
         else
         {
@@ -155,6 +162,12 @@ int tablebaseStep(int depth)
                 // mark this position as winnable!
                 set_bit32_arr(whiteWins, changed);
 
+                Godel s = getThirdPieceSymmetryGodel(changed);
+                if (s)
+                {
+                    set_bit32_arr(whiteWins, s);
+                }
+
                 unmakeUnmove(unmove);
             }
         }
@@ -202,7 +215,14 @@ int tablebaseStep(int depth)
                 }
 
                 // mark this position as losable
-                set_bit32_arr(blackTemp, getGodelNumber());
+                Godel g = getGodelNumber();
+                set_bit32_arr(blackTemp, g);
+
+                Godel s = getThirdPieceSymmetryGodel(g);
+                if (s)
+                {
+                    set_bit32_arr(blackTemp, s);
+                }
 
                 unmakeUnmove(unmove);
             }
@@ -243,6 +263,11 @@ int tablebaseStep(int depth)
                 {
                     // check the reference to see if this position is still winning for white.
                     int captType = moveCapturePieceTypes(move);
+                    if (captType)
+                    {
+                        alwaysWinning = 0;
+                        break;
+                    }
                     if (captType & pieceTypeMasks[immobilizer] && endgameRef && get_bit32_arr(endgameRef, getRefGodelNumber()))
                     {
                         continue;
@@ -267,6 +292,12 @@ int tablebaseStep(int depth)
             {
                 newPosition = newPosition || !get_bit32_arr(blackLoses, i);
                 set_bit32_arr(blackLoses, i);
+
+                Godel s = getThirdPieceSymmetryGodel(i);
+                if (s)
+                {
+                    set_bit32_arr(blackLoses, s);
+                }
             }
         }
     }

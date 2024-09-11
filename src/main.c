@@ -19,13 +19,6 @@ int main(void)
     populateTransforms();
     populateGodelLookups();
 
-    if (!loadGodelNumber(2962))
-    {
-        puts("ILLEGAL GODEL NUMBER");
-    }
-    prettyPrintBoard();
-    printf("Godel number: %lu\n", getGodelNumber());
-
     if (!allocTablebase())
     {
         return -1;
@@ -54,7 +47,7 @@ int main(void)
     fread(DTML, sizeof(unsigned short int), possibilities, DTMLFile);
     fclose(DTMLFile);
 
-    loadFEN("r2k3/8/8/8/8/8/8/U3K3 w -");
+    loadFEN("3k4/8/8/8/8/8/8/R3K3 w -");
 
     userDemo();
 
