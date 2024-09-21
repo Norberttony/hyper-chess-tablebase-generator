@@ -6,7 +6,7 @@
 #include "move.h"
 #include "transform.h"
 
-typedef uint32_t Godel;
+typedef unsigned long long Godel;
 
 // number of possible positions achievable with two kings
 #define TWO_KING_POSS 528
@@ -23,6 +23,11 @@ extern Godel kingsGodelLookup[10][64];
 // just the two kings
 extern int kingSquareLookup[TWO_KING_POSS][2];
 
+// configuration of white and black pieces
+extern int whitePieces[7];
+extern int blackPieces[7];
+
+
 // populates the kingsGodelLookup and kingSquareLookup arrays
 void populateGodelLookups();
 
@@ -31,9 +36,6 @@ int loadGodelNumber(Godel);
 
 // returns the Godel number of the current position
 Godel getGodelNumber(void);
-
-// returns the previous (endgame reference) Godel number of the current position.
-Godel getRefGodelNumber(void);
 
 void clearPosition(void);
 
