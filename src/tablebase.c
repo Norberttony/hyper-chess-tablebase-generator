@@ -3,18 +3,11 @@
 
 int fileSize = 0;
 
-#ifndef BLACK_PIECES
-Godel possibilities = 528 * (1 << WHITE_PIECES * 6);
-#else
-Godel possibilities = 528 * (1 << (WHITE_PIECES + BLACK_PIECES) * 6);
-#endif
+Godel possibilities;
 
 uint32_t *whiteWins;
 uint32_t *blackLoses;
 uint32_t *blackTemp;
-
-uint32_t *endgameRef;
-uint32_t *endgameRef2;
 
 
 const int pieceTypeMasks[] =
@@ -33,8 +26,10 @@ const int pieceTypeMasks[] =
 // allocates memory for the tablebase
 int allocTablebase()
 {
+    possibilities = getNumPossibilities();
     fileSize = (possibilities >> 5) + 1;
-    Godel refPoss = possibilities >> 6;
+
+    printf("There are %llu possible positions.\n", possibilities);
 
     // arrays that will be indexed by the Godel number and return 1 if the position belongs in
     // the set of positions
@@ -42,23 +37,11 @@ int allocTablebase()
     blackLoses = (uint32_t*)malloc(sizeof(uint32_t) * fileSize);
     blackTemp  = (uint32_t*)malloc(sizeof(uint32_t) * fileSize);
 
-    endgameRef = (uint32_t*)malloc(sizeof(uint32_t) * refPoss);
-    endgameRef2 = (uint32_t*)malloc(sizeof(uint32_t) * refPoss);
-
     if (!whiteWins || !blackLoses || !blackTemp)
     {
         puts("Not enough memory to allocate tablebase. Check the number of pieces and possible positions.");
         return -1;
     }
-
-
-    FILE *file = fopen("KRvK-w.bin", "rb");
-    fread(endgameRef, sizeof(uint32_t), refPoss, file);
-    fclose(file);
-
-    file = fopen("KUvK-w.bin", "rb");
-    fread(endgameRef2, sizeof(uint32_t), refPoss, file);
-    fclose(file);
 
    return 1;
 }
@@ -86,7 +69,6 @@ void initTablebase()
 
         if (!success || isAttackingKing())
         {
-            clr_bit32_arr(blackLoses, i);
             continue;
         }
         
@@ -101,9 +83,34 @@ void initTablebase()
                 set_bit32_arr(blackLoses, s);
             }
         }
-        else
+
+        // check if there are any captures. if there are, reference previous DB files...
+        Move captures[MAX_CAPTURES];
+        int size = generateMoves((Move*)captures, 1);
+        for (int j = 0; j < size; j++)
         {
-            clr_bit32_arr(blackLoses, i);
+            Move c = captures[j];
+            if (!isMoveLegal(c))
+            {
+                continue;
+            }
+
+            makeMove(c);
+
+            uint32_t* ref = getEndgameRef(0);
+            if (!ref)
+            {
+                puts("UNSUPPORTED ENDGAME REF");
+                exit(0);
+            }
+
+            Godel g = getGodelNumber();
+            if (get_bit32_arr(ref, g))
+            {
+                set_bit32_arr(blackLoses, g);
+            }
+
+            unmakeMove(c);
         }
     }
 
@@ -113,6 +120,9 @@ void initTablebase()
     FILE *fileB = fopen("B0.bin", "wb");
     fwrite(blackLoses, sizeof(uint32_t), fileSize, fileB);
     fclose(fileB);
+
+    // free endgame ref cache for black's endgames.
+    freeEndgameRefCache(0);
 
     puts("Initialization complete!");
 }
@@ -240,7 +250,7 @@ int tablebaseStep(int depth)
         if (get_bit32_arr(blackTemp, i) && loadGodelNumber(i))
         {
             Move moves[MAX_MOVES];
-            int size = generateMoves((Move*)moves);
+            int size = generateMoves((Move*)moves, 0);
 
             int alwaysWinning = 1;
             for (int j = 0; j < size; j++)
@@ -256,36 +266,32 @@ int tablebaseStep(int depth)
 
                 Godel changed = getGodelNumber();
 
-                unmakeMove(move);
-
-                // to-do: should probe sub-databases in order to determine win/loss.
                 if (move & move_captMask)
                 {
                     // check the reference to see if this position is still winning for white.
-                    int captType = moveCapturePieceTypes(move);
-                    if (captType)
+                    uint32_t* ref = getEndgameRef(1);
+                    if (!ref)
+                    {
+                        prettyPrintBoard();
+                        puts("MISSING ENDGAME FILE FOR CURRENT PIECE COMPOSITION");
+                        exit(1);
+                    }
+
+                    if (!get_bit32_arr(ref, changed))
                     {
                         alwaysWinning = 0;
+                        unmakeMove(move);
                         break;
                     }
-                    if (captType & pieceTypeMasks[immobilizer] && endgameRef && get_bit32_arr(endgameRef, getRefGodelNumber()))
-                    {
-                        continue;
-                    }
-                    else if (captType & pieceTypeMasks[coordinator] && endgameRef2 && get_bit32_arr(endgameRef2, getRefGodelNumber()))
-                    {
-                        continue;
-                    }
-                    // alright, so it's just this one piece that got captured. this is a draw then.
+                }
+                else if (!get_bit32_arr(whiteWins, changed))
+                {
                     alwaysWinning = 0;
+                    unmakeMove(move);
                     break;
                 }
 
-                if (!get_bit32_arr(whiteWins, changed))
-                {
-                    alwaysWinning = 0;
-                    break;
-                }
+                unmakeMove(move);
             }
 
             if (alwaysWinning && (size > 0 || isAttackingKing()))
@@ -309,25 +315,32 @@ int tablebaseStep(int depth)
 
     puts("Depth complete.");
 
+    // this function should no longer be called if there is no new position.
+    // therefore, it seems good to clear all previous endgame caches.
+    if (!newPosition)
+    {
+        freeEndgameRefCache(1);
+    }
+
     return newPosition;
 }
 
-void createDepthToMateFile(int maxDepth)
+void createDTZFile(int maxDepth)
 {
     char fileName[1000];
 
     // depth to mate in ply
-    unsigned short int* depthToMateW = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    unsigned short int* depthToMateL = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    if (!depthToMateW || !depthToMateL)
+    unsigned short int* depthToZeroW = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
+    unsigned short int* depthToZeroL = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
+    if (!depthToZeroW || !depthToZeroL)
     {
         puts("Could not allocate depth to mate array");
         return;
     }
     for (int i = 0; i < possibilities; i++)
     {
-        depthToMateW[i] = 0;
-        depthToMateL[i] = 65535;
+        depthToZeroW[i] = 0;
+        depthToZeroL[i] = 65535;
     }
 
 
@@ -348,10 +361,10 @@ void createDepthToMateFile(int maxDepth)
         {
             continue;
         }
-        if (depthToMateL[g] == 65535 && get_bit32_arr(losses, g))
+        if (depthToZeroL[g] == 65535 && get_bit32_arr(losses, g))
         {
             // first time encountering a black loss here
-            depthToMateL[g] = 0;
+            depthToZeroL[g] = 0;
         }
     }
 
@@ -375,15 +388,15 @@ void createDepthToMateFile(int maxDepth)
             {
                 continue;
             }
-            if (depthToMateW[g] == 0 && get_bit32_arr(wins, g))
+            if (depthToZeroW[g] == 0 && get_bit32_arr(wins, g))
             {
                 // first time encountering a white win here
-                depthToMateW[g] = d * 2 - 1;
+                depthToZeroW[g] = d * 2 - 1;
             }
-            if (depthToMateL[g] == 65535 && get_bit32_arr(losses, g))
+            if (depthToZeroL[g] == 65535 && get_bit32_arr(losses, g))
             {
                 // first time encountering a black loss here
-                depthToMateL[g] = d * 2;
+                depthToZeroL[g] = d * 2;
             }
         }
     }
@@ -392,13 +405,13 @@ void createDepthToMateFile(int maxDepth)
     free(losses);
 
     // store depth to mate in a special file
-    FILE* fileDTMW = fopen("DTMW.bin", "wb");
-    fwrite(depthToMateW, sizeof(unsigned short int), possibilities, fileDTMW);
-    fclose(fileDTMW);
+    FILE* fileDTZW = fopen("DTZW.bin", "wb");
+    fwrite(depthToZeroW, sizeof(unsigned short int), possibilities, fileDTZW);
+    fclose(fileDTZW);
 
-    FILE* fileDTML = fopen("DTML.bin", "wb");
-    fwrite(depthToMateL, sizeof(unsigned short int), possibilities, fileDTML);
-    fclose(fileDTML);
+    FILE* fileDTZL = fopen("DTZL.bin", "wb");
+    fwrite(depthToZeroL, sizeof(unsigned short int), possibilities, fileDTZL);
+    fclose(fileDTZL);
 }
 
 int moveCapturePieceTypes(Move m)
@@ -439,3 +452,114 @@ int moveCapturePieceTypes(Move m)
     }
 }
 
+// 9p 3c 3n 2q 2u 2r
+uint32_t *endgameRefW[PIECE_COMP_POSS] = { 0 };
+uint32_t *endgameRefB[PIECE_COMP_POSS] = { 0 };
+
+// returns the number of possible positions given that symmetries are removed.
+Godel getNumPossibilities(void)
+{
+    Godel p = TWO_KING_POSS;
+    for (int i = 1; i < 7; i++)
+    {
+        p *= _64Cr[whitePieces[i]] * _64Cr[blackPieces[i]];
+    }
+    return p;
+}
+
+// fetches the proper endgame reference for the current piece configuration.
+uint32_t* getEndgameRef(int isWhite)
+{
+    // a unique number representing the current piece composition
+    int hash =
+        whitePieces[1] + whitePieces[2] * 9 + whitePieces[3] * 12 + whitePieces[4] * 15 + whitePieces[5] * 17 + whitePieces[6] * 19 +
+        blackPieces[1] * 21 + whitePieces[2] * 30 + whitePieces[3] * 33 + whitePieces[4] * 36 + whitePieces[5] * 38 + whitePieces[6] * 40;
+
+    // check if this endgame reference has already been opened and cached
+    uint32_t* cachedRef = isWhite ? endgameRefW[hash] : endgameRefB[hash];
+    if (cachedRef)
+    {
+        return cachedRef;
+    }
+
+    // otherwise, try to open this file.
+    #define FN_SIZE 256
+    char fileName[FN_SIZE] = "K";
+    int idx = 1;
+    for (int i = 1; i < 7; i++)
+    {
+        for (int j = 0; j < whitePieces[i]; j++)
+        {
+            snprintf(&fileName[idx], FN_SIZE - idx, "%c", pieceFEN[i]);
+            idx++;
+        }
+    }
+
+    snprintf(&fileName[idx], FN_SIZE - idx, "vK");
+    idx += 2;
+
+    for (int i = 1; i < 7; i++)
+    {
+        for (int j = 0; j < blackPieces[i]; j++)
+        {
+            snprintf(&fileName[idx], FN_SIZE - idx, "%c", pieceFEN[i]);
+        }
+    }
+    
+    snprintf(&fileName[idx], FN_SIZE - idx, "-%c99.bin", isWhite ? 'w' : 'b');
+
+    // now that we finally extracted the file name, let's open up the file!
+    FILE* endgameFile = fopen(fileName, "rb");
+
+    if (!endgameFile)
+    {
+        puts("Error opening up endgame file!");
+        printf("The name of the endgame file was %s\n", fileName);
+        return 0;
+    }
+
+    // now read from the file
+    Godel possibilities = getNumPossibilities();
+    Godel elemCount = (possibilities >> 5) + 1;
+    
+    uint32_t* reference = (uint32_t*)malloc(sizeof(uint32_t) * elemCount);
+    fread(reference, sizeof(uint32_t), elemCount, endgameFile);
+    fclose(endgameFile);
+
+    // cache and then return the contents of the file
+    if (isWhite)
+    {
+        endgameRefW[hash] = reference;
+    }
+    else
+    {
+        endgameRefB[hash] = reference;
+    }
+    return reference;
+}
+
+void freeEndgameRefCache(int isWhite)
+{
+    if (isWhite)
+    {
+        for (int i = 0; i < PIECE_COMP_POSS; i++)
+        {
+            if (endgameRefW[i])
+            {
+                free(endgameRefW[i]);
+                endgameRefW[i] = 0;
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < PIECE_COMP_POSS; i++)
+        {
+            if (endgameRefB[i])
+            {
+                free(endgameRefB[i]);
+                endgameRefB[i] = 0;
+            }
+        }
+    }
+}

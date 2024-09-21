@@ -35,9 +35,30 @@ int generateUnmoves(Unmove* list)
     // undo king's move
     U64 kingBoard = position[notToPlay + king];
     int kingSq = pop_lsb(kingBoard);
-    U64 kMoves = kingMoves[kingSq] & ~(totalBoard | (kingMoves[oppKingSq] * (oppKing > 0)) | oppImmInfl);
-    size += extractMoves((kingSq << 3) | king, kMoves, &list[size]);
 
+    U64 coordBoard = position[notToPlay + coordinator];
+    int coordSq = pop_lsb(coordBoard);
+
+    U64 chamBoard = position[notToPlay + chameleon];
+    U64 cham1Board = 1ULL << pop_lsb(chamBoard);
+    int cham1Sq = pop_lsb(cham1Board);
+    U64 cham2Board = chamBoard & (chamBoard - 1);
+    int cham2Sq = pop_lsb(cham2Board);
+
+    U64 kingCoordDS = (coordBoard > 0) * (deathSquares[kingSq][coordSq][0] | deathSquares[kingSq][coordSq][1]);
+    U64 kingChamDS1 = (cham1Board > 0) * (deathSquares[kingSq][cham1Sq][0] | deathSquares[kingSq][cham1Sq][1]);
+    U64 kingChamDS2 = (cham2Board > 0) * (deathSquares[kingSq][cham2Sq][0] | deathSquares[kingSq][cham2Sq][1]);
+
+    int allowKingCoordMoves = coordBoard == 0 || !(kingCoordDS & position[toPlay]);
+
+    int allowKingChamMoves = chamBoard == 0 || !(kingChamDS1 & position[toPlay + coordinator]);
+
+
+    if (allowKingCoordMoves && allowKingChamMoves)
+    {
+        U64 kMoves = kingMoves[kingSq] & ~(totalBoard | (kingMoves[oppKingSq] * (oppKing > 0)) | oppImmInfl);
+        size += extractMoves((kingSq << 3) | king, kMoves, &list[size]);
+    }
     U64 straddlers = position[notToPlay + straddler];
 
     // undoing a straddler move and then playing it again can cause different results.
@@ -67,8 +88,8 @@ int generateUnmoves(Unmove* list)
         size += extractMoves(fromSq << 3 | immobilizer, moves, &list[size]);
     }
 
-    U64 chamBoard = position[notToPlay + chameleon];
-    while (chamBoard)
+    // to-do: do not run with > 1 chameleon and a coordinator on the board, will give illegal moves.
+    while (allowKingChamMoves && chamBoard)
     {
         int fromSq = pop_lsb(chamBoard);
         U64 moves = (get_rook_attacks(fromSq, totalBoard) | get_bishop_attacks(fromSq, totalBoard)) & ~(totalBoard | oppImmInfl);
@@ -87,8 +108,7 @@ int generateUnmoves(Unmove* list)
         springerBoard &= springerBoard - 1;
     }
 
-    U64 coordBoard = position[notToPlay + coordinator];
-    if (coordBoard)
+    if (coordBoard && allowKingCoordMoves)
     {
         int fromSq = pop_lsb(coordBoard);
         U64 moves = (get_rook_attacks(fromSq, totalBoard) | get_bishop_attacks(fromSq, totalBoard)) & ~(totalBoard | oppImmInfl);

@@ -21,19 +21,34 @@ int whitePieces[7] =
     0, // retractor
     0, // springer
     0, // coordinator
-    1, // immobilizer
-    0  // chameleon
+    0, // immobilizer
+    1  // chameleon
 };
 int blackPieces[7] =
 {
     0, // empty, should always be 0
-    0, // straddlers
+    1, // straddlers
     0, // retractor
     0, // springer
     0, // coordinator
     0, // immobilizer
     0  // chameleon
 };
+
+// look up table for 64 choose idx
+const Godel _64Cr[] =
+{
+    1ULL,
+    64ULL,
+    2016ULL,
+    41664ULL,
+    635376ULL,
+    7624512ULL,
+    74974368ULL,
+    621216192ULL,
+    4426165368ULL
+};
+
 
 void populateGodelLookups()
 {
@@ -126,12 +141,12 @@ int loadGodelNumber(Godel godel)
         int pieceSq = transform[godel & 63];
 
         // avoid placing two pieces on the same square
-        if (pieceList[pieceSq])
+        if (whitePieces[i] > 0 && pieceList[pieceSq])
         {
             return 0;
         }
 
-        U64 pieceBoard = 1ULL * (whitePieces[i] > 0) << pieceSq;
+        U64 pieceBoard = (1ULL << pieceSq) * (whitePieces[i] > 0);
         
         position[white + i] |= pieceBoard;
         position[white] |= pieceBoard;
@@ -147,12 +162,12 @@ int loadGodelNumber(Godel godel)
         int pieceSq = transform[godel & 63];
 
         // avoid placing two pieces on the same square
-        if (pieceList[pieceSq])
+        if (blackPieces[i] > 0 && pieceList[pieceSq])
         {
             return 0;
         }
 
-        U64 pieceBoard = 1ULL * (blackPieces[i] > 0) << pieceSq;
+        U64 pieceBoard = (1ULL << pieceSq) * (blackPieces[i] > 0);
         
         position[black + i] |= pieceBoard;
         position[black] |= pieceBoard;
@@ -177,18 +192,24 @@ Godel getGodelNumber(void)
     blackKingSq = transform[blackKingSq];
 
     Godel g = kingsGodelLookup[wKingLookup[whiteKingSq]][blackKingSq];
-
-    // fetch black and white pieces
     // assumes that there is at most one of each piece type
+    // fetch white pieces
     Godel gw = 0;
-    Godel gb = 0;
+    int o = 0;
     for (int i = 1; i < 7; i++)
     {
         int pieceSq = pop_lsb(position[white + i]);
-        gw += transform[pieceSq] * (whitePieces[i] > 0) << i * 6;
+        gw += transform[pieceSq] * (whitePieces[i] > 0) * (o + !o);
+        o += _64Cr[whitePieces[i]] - (whitePieces[i] == 0);
+    }
 
+    // fetch black pieces
+    Godel gb = 0;
+    for (int i = 1; i < 7; i++)
+    {
         int pieceSq = pop_lsb(position[black + i]);
-        gb += transform[pieceSq] * (blackPieces[i] > 0) << i * 6;
+        gb += transform[pieceSq] * (blackPieces[i] > 0) * (o + !o);
+        o += _64Cr[blackPieces[i]] - (blackPieces[i] == 0);
     }
 
     return g + (gw + gb) * TWO_KING_POSS;

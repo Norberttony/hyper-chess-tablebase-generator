@@ -27,6 +27,8 @@ extern int kingSquareLookup[TWO_KING_POSS][2];
 extern int whitePieces[7];
 extern int blackPieces[7];
 
+extern const Godel _64Cr[];
+
 
 // populates the kingsGodelLookup and kingSquareLookup arrays
 void populateGodelLookups();

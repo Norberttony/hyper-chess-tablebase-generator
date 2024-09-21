@@ -10,8 +10,8 @@ void initMoveGen(void);
 
 void userDemo();
 
-unsigned short int* DTMW;
-unsigned short int* DTML;
+unsigned short int* DTZW;
+unsigned short int* DTZL;
 
 int main(void)
 {
@@ -33,21 +33,22 @@ int main(void)
         printf("Depth %d done.\n", depth);
     }
 
-    createDepthToMateFile(depth);
+    createDTZFile(depth);
 
-    // read the DTMW file
-    DTMW = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTMWFile = fopen("DTMW.bin", "rb");
-    fread(DTMW, sizeof(unsigned short int), possibilities, DTMWFile);
-    fclose(DTMWFile);
+    // read the DTZW file
+    DTZW = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
+    FILE* DTZWFile = fopen("DTZW.bin", "rb");
+    fread(DTZW, sizeof(unsigned short int), possibilities, DTZWFile);
+    fclose(DTZWFile);
 
     // read the DTML file
-    DTML = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTMLFile = fopen("DTML.bin", "rb");
-    fread(DTML, sizeof(unsigned short int), possibilities, DTMLFile);
-    fclose(DTMLFile);
+    DTZL = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
+    FILE* DTZLFile = fopen("DTZL.bin", "rb");
+    fread(DTZL, sizeof(unsigned short int), possibilities, DTZLFile);
+    fclose(DTZLFile);
 
-    loadFEN("3k4/8/8/8/8/8/8/R3K3 w -");
+    loadGodelNumber(15574);
+    printf("%llu\n", getGodelNumber());
 
     userDemo();
 
@@ -80,17 +81,17 @@ void userDemo()
 
         if (toPlay == white)
         {
-            printf("DTM: %hu\n", DTMW[thisGodel]);
+            printf("DTZ: %hu\n", DTZW[thisGodel]);
         }
         else if (toPlay == black)
         {
-            printf("DTM: %hu\n", DTML[thisGodel]);
+            printf("DTZ: %hu\n", DTZL[thisGodel]);
         }
 
         // show move results
         puts("Move results:");
         Move moves[MAX_MOVES];
-        int size = generateMoves(&moves[0]);
+        int size = generateMoves(&moves[0], 0);
         for (int i = 0; i < size; i++)
         {
             Move m = moves[i];
@@ -102,11 +103,11 @@ void userDemo()
             makeMove(m);
             if (toPlay == white)
             {
-                printf("DTM: %d\n", DTMW[getGodelNumber()]);
+                printf("DTZ: %d\n", DTZW[getGodelNumber()]);
             }
             else if (toPlay == black)
             {
-                printf("DTM: %d\n", DTML[getGodelNumber()]);
+                printf("DTZ: %d\n", DTZL[getGodelNumber()]);
             }
             unmakeMove(m);
         }
