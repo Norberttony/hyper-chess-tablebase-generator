@@ -67,6 +67,8 @@ void initTablebase()
     {
         int success = loadGodelNumber(i);
 
+        toPlay = black;
+        notToPlay = white;
         if (!success || isAttackingKing())
         {
             continue;
@@ -85,6 +87,15 @@ void initTablebase()
         }
 
         // check if there are any captures. if there are, reference previous DB files...
+        toPlay = white;
+        notToPlay = black;
+        if (isAttackingKing())
+        {
+            continue;
+        }
+
+        toPlay = white;
+        notToPlay = black;
         Move captures[MAX_CAPTURES];
         int size = generateMoves((Move*)captures, 1);
         for (int j = 0; j < size; j++)
@@ -107,7 +118,9 @@ void initTablebase()
             Godel g = getGodelNumber();
             if (get_bit32_arr(ref, g))
             {
-                set_bit32_arr(blackLoses, g);
+                set_bit32_arr(whiteWins, i);
+                unmakeMove(c);
+                break;
             }
 
             unmakeMove(c);

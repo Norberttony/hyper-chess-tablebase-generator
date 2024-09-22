@@ -21,18 +21,23 @@ int whitePieces[7] =
     0, // retractor
     0, // springer
     0, // coordinator
-    0, // immobilizer
-    1  // chameleon
+    1, // immobilizer
+    0  // chameleon
 };
 int blackPieces[7] =
 {
     0, // empty, should always be 0
-    1, // straddlers
+    0, // straddlers
     0, // retractor
     0, // springer
-    0, // coordinator
+    1, // coordinator
     0, // immobilizer
     0  // chameleon
+};
+
+int* pieceComp[2] =
+{
+    whitePieces, blackPieces
 };
 
 // look up table for 64 choose idx
@@ -138,43 +143,92 @@ int loadGodelNumber(Godel godel)
     // extract the squares of the white pieces
     for (int i = 1; i < 7; i++)
     {
-        int pieceSq = transform[godel & 63];
-
-        // avoid placing two pieces on the same square
-        if (whitePieces[i] > 0 && pieceList[pieceSq])
+        if (whitePieces[i] == 1)
         {
-            return 0;
+            int pieceSq = transform[godel & 63];
+
+            // avoid placing two pieces on the same square
+            if (pieceList[pieceSq])
+            {
+                return 0;
+            }
+
+            U64 pieceBoard = 1ULL << pieceSq;
+            
+            position[white + i] |= pieceBoard;
+            position[white] |= pieceBoard;
+
+            pieceList[pieceSq] = i;
+
+            godel >>= 6;
         }
+        else if (whitePieces[i] == 2)
+        {
+            U64 pieces = perms[whitePieces[i]][godel % _64Cr[whitePieces[i]]];
 
-        U64 pieceBoard = (1ULL << pieceSq) * (whitePieces[i] > 0);
-        
-        position[white + i] |= pieceBoard;
-        position[white] |= pieceBoard;
+            int sq1 = transform[pop_lsb(pieces)];
+            int sq2 = transform[pop_lsb(pieces & (pieces - 1))];
 
-        pieceList[pieceSq] = i * (whitePieces[i] > 0);
+            if (pieceList[sq1] || pieceList[sq2])
+            {
+                return 0;
+            }
 
-        godel >>= 6 * (whitePieces[i] > 0);
+            U64 pieceBoard = 1ULL << sq1 | 1ULL << sq2;
+
+            position[white + i] |= pieceBoard;
+            position[white] |= pieceBoard;
+
+            pieceList[sq1] = i;
+            pieceList[sq2] = i;
+
+            godel /= _64Cr[whitePieces[i]];
+        }
     }
 
     // extract the squares of the black pieces
     for (int i = 1; i < 7; i++)
     {
-        int pieceSq = transform[godel & 63];
-
-        // avoid placing two pieces on the same square
-        if (blackPieces[i] > 0 && pieceList[pieceSq])
+        if (blackPieces[i] == 1)
         {
-            return 0;
+            int pieceSq = transform[godel & 63];
+
+            // avoid placing two pieces on the same square
+            if (pieceList[pieceSq])
+            {
+                return 0;
+            }
+
+            U64 pieceBoard = 1ULL << pieceSq;
+            
+            position[black + i] |= pieceBoard;
+            position[black] |= pieceBoard;
+
+            pieceList[pieceSq] = i;
+
+            godel >>= 6;
         }
+        else if (blackPieces[i] == 2)
+        {
+            U64 pieces = perms[blackPieces[i]][godel & _64Cr[blackPieces[i]]];
+            int sq1 = transform[pop_lsb(pieces)];
+            int sq2 = transform[pop_lsb(pieces & (pieces - 1))];
 
-        U64 pieceBoard = (1ULL << pieceSq) * (blackPieces[i] > 0);
-        
-        position[black + i] |= pieceBoard;
-        position[black] |= pieceBoard;
+            if (pieceList[sq1] || pieceList[sq2])
+            {
+                return 0;
+            }
 
-        pieceList[pieceSq] = i * (blackPieces[i] > 0);
+            U64 pieceBoard = 1ULL << sq1 | 1ULL << sq2;
 
-        godel >>= 6 * (blackPieces[i] > 0);
+            position[black + i] |= pieceBoard;
+            position[black] |= pieceBoard;
+
+            pieceList[sq1] = i;
+            pieceList[sq2] = i;
+
+            godel /= _64Cr[blackPieces[i]];
+        }
     }
 
     // return 1 if no pieces intersect and 0 if they do intersect
@@ -198,18 +252,42 @@ Godel getGodelNumber(void)
     int o = 0;
     for (int i = 1; i < 7; i++)
     {
-        int pieceSq = pop_lsb(position[white + i]);
-        gw += transform[pieceSq] * (whitePieces[i] > 0) * (o + !o);
-        o += _64Cr[whitePieces[i]] - (whitePieces[i] == 0);
+        if (whitePieces[i] == 1)
+        {
+            int pieceSq = pop_lsb(position[white + i]);
+            gw += transform[pieceSq] * (o + !o);
+            o += _64Cr[1];
+        }
+        else if (whitePieces[i] == 2)
+        {
+            U64 pieces = position[white + i];
+            int sq1 = pop_lsb(pieces);
+            int sq2 = pop_lsb(pieces & (pieces - 1));
+            U64 board = 1ULL << transform[sq1] | 1ULL << transform[sq2];
+            gw += getPerm2Index(board);
+            o += _64Cr[2];
+        }
     }
 
     // fetch black pieces
     Godel gb = 0;
     for (int i = 1; i < 7; i++)
     {
-        int pieceSq = pop_lsb(position[black + i]);
-        gb += transform[pieceSq] * (blackPieces[i] > 0) * (o + !o);
-        o += _64Cr[blackPieces[i]] - (blackPieces[i] == 0);
+        if (blackPieces[i] == 1)
+        {
+            int pieceSq = pop_lsb(position[black + i]);
+            gb += transform[pieceSq] * (o + !o);
+            o += _64Cr[1];
+        }
+        else if (blackPieces[i] == 2)
+        {
+            U64 pieces = position[black + i];
+            int sq1 = pop_lsb(pieces);
+            int sq2 = pop_lsb(pieces & (pieces - 1));
+            U64 board = 1ULL << transform[sq1] | 1ULL << transform[sq2];
+            gb += getPerm2Index(board);
+            o += _64Cr[2];
+        }
     }
 
     return g + (gw + gb) * TWO_KING_POSS;
@@ -237,19 +315,39 @@ Godel getThirdPieceSymmetryGodel(Godel g)
     // check white pieces
     for (int i = 1; i < 7; i++)
     {
-        int pieceExists = whitePieces[i] > 0;
-        symmG <<= pieceExists * 6;
-        symmG += pieceExists * reflectA8H1[g & 63];
-        g >>= pieceExists * 6;
+        if (whitePieces[i] == 1)
+        {
+            symmG <<= 6;
+            symmG += reflectA8H1[g & 63];
+            g >>= 6;
+        }
+        else if (whitePieces[i] == 2)
+        {
+            symmG *= _64Cr[2];
+            U64 board = position[white + i];
+            U64 newBoard = 1ULL << reflectA8H1[pop_lsb(board)] | 1ULL << reflectA8H1[pop_lsb(board & (board - 1))];
+            symmG += getPerm2Index(newBoard);
+            g /= _64Cr[2];
+        }
     }
 
     // check black pieces
     for (int i = 1; i < 7; i++)
     {
-        int pieceExists = blackPieces[i] > 0;
-        symmG <<= pieceExists * 6;
-        symmG += pieceExists * reflectA8H1[g & 63];
-        g >>= pieceExists * 6;
+        if (blackPieces[i] == 1)
+        {
+            symmG <<= 6;
+            symmG += reflectA8H1[g & 63];
+            g >>= 6;
+        }
+        else if (blackPieces[i] == 2)
+        {
+            symmG *= _64Cr[2];
+            U64 board = position[black + i];
+            U64 newBoard = 1ULL << reflectA8H1[pop_lsb(board)] | 1ULL << reflectA8H1[pop_lsb(board & (board - 1))];
+            symmG += getPerm2Index(newBoard);
+            g /= _64Cr[2];
+        }
     }
 
     return kings + symmG * TWO_KING_POSS;

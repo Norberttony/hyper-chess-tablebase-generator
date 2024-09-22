@@ -2,6 +2,7 @@
 #include "transform.h"
 #include "godel.h"
 #include "tablebase.h"
+#include "perms.h"
 
 #include <stdio.h>
 
@@ -15,6 +16,7 @@ unsigned short int* DTZL;
 
 int main(void)
 {
+    initPerms();
     initMoveGen();
     populateTransforms();
     populateGodelLookups();
@@ -47,7 +49,8 @@ int main(void)
     fread(DTZL, sizeof(unsigned short int), possibilities, DTZLFile);
     fclose(DTZLFile);
 
-    loadGodelNumber(15574);
+    //loadGodelNumber(15574);
+    loadFEN("4k3/8/8/8/8/8/8/N2K3N w -");
     printf("%llu\n", getGodelNumber());
 
     userDemo();

@@ -2,6 +2,7 @@
 #define MAKE_UNMAKE_HEADER
 
 #include "move.h"
+#include "godel.h"
 
 // forward declaration for white and black piece configurations (in case a piece gets captured
 // and the arrays have to be updated)

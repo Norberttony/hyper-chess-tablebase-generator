@@ -5,6 +5,7 @@
 #include "defines.h"
 #include "move.h"
 #include "transform.h"
+#include "perms.h"
 
 typedef unsigned long long Godel;
 
@@ -26,6 +27,7 @@ extern int kingSquareLookup[TWO_KING_POSS][2];
 // configuration of white and black pieces
 extern int whitePieces[7];
 extern int blackPieces[7];
+extern int* pieceComp[2];
 
 extern const Godel _64Cr[];
 

@@ -18,6 +18,8 @@ void makeMove(Move m)
 
     U64 zobristHashUpdate = 0ULL;
 
+    int* pieces = pieceComp[notToPlay > 0];
+
     // interpret capture bits
     switch(type)
     {
@@ -49,10 +51,10 @@ void makeMove(Move m)
 
             // assumes only black will make moves (when checking if black to play and lose positions
             // are forced losses).
-            whitePieces[c1]--;
-            whitePieces[c2]--;
-            whitePieces[c3]--;
-            whitePieces[c4]--;
+            pieces[c1]--;
+            pieces[c2]--;
+            pieces[c3]--;
+            pieces[c4]--;
 
             break;
         
@@ -75,8 +77,8 @@ void makeMove(Move m)
                 ((c1 != 0) * get_zobrist_hash(top, c1, toPlay)) ^
                 ((c2 != 0) * get_zobrist_hash(bottom, c2, toPlay));
 
-            whitePieces[c1]--;
-            whitePieces[c2]--;
+            pieces[c1]--;
+            pieces[c2]--;
 
             break;
 
@@ -127,10 +129,10 @@ void makeMove(Move m)
 
             zobristHashUpdate ^= (coordDeath > 0) * get_zobrist_hash(deathSqC, coordinator, toPlay);
 
-            whitePieces[c1]--;
-            whitePieces[c2]--;
-            whitePieces[c3]--;
-            whitePieces[(coordDeath > 0) * coordinator]--;
+            pieces[c1]--;
+            pieces[c2]--;
+            pieces[c3]--;
+            pieces[(coordDeath > 0) * coordinator]--;
 
             break;
 
@@ -144,7 +146,7 @@ void makeMove(Move m)
 
             zobristHashUpdate ^= (c1 != 0) * get_zobrist_hash(coordinateSq, c1, toPlay);
 
-            whitePieces[c1]--;
+            pieces[c1]--;
 
             break;
         
@@ -157,7 +159,7 @@ void makeMove(Move m)
 
             zobristHashUpdate ^= (c1 != 0) * get_zobrist_hash(coordinateSq, c1, toPlay);
 
-            whitePieces[c1]--;
+            pieces[c1]--;
 
             break;
 
@@ -226,13 +228,13 @@ void makeMove(Move m)
 
             zobristHashUpdate ^= c8 * get_zobrist_hash(spriCaptSq, springer, toPlay);
 
-            whitePieces[c1]--;
-            whitePieces[c2]--;
-            whitePieces[c3]--;
-            whitePieces[c4]--;
-            whitePieces[(c5 || c6) * coordinator]--;
-            whitePieces[c7 * retractor]--;
-            whitePieces[c8 * springer]--;
+            pieces[c1]--;
+            pieces[c2]--;
+            pieces[c3]--;
+            pieces[c4]--;
+            pieces[(c5 || c6) * coordinator]--;
+            pieces[c7 * retractor]--;
+            pieces[c8 * springer]--;
 
             break;
     }
@@ -312,6 +314,8 @@ void unmakeMove(Move m)
     pieceList[from] = pieceList[to];
     pieceList[to] = 0;
 
+    int* pieces = pieceComp[notToPlay > 0];
+
     // interpret capture bits
     switch(type)
     {
@@ -341,10 +345,10 @@ void unmakeMove(Move m)
             // down
             set_piece(notToPlay, c4, c4 > 0, dnSq);
 
-            whitePieces[c1]++;
-            whitePieces[c2]++;
-            whitePieces[c3]++;
-            whitePieces[c4]++;
+            pieces[c1]++;
+            pieces[c2]++;
+            pieces[c3]++;
+            pieces[c4]++;
 
             break;
 
@@ -366,8 +370,8 @@ void unmakeMove(Move m)
                 ((c1 != 0) * get_zobrist_hash(top, c1, toPlay)) ^
                 ((c2 != 0) * get_zobrist_hash(bottom, c2, toPlay));
 
-            whitePieces[c1]++;
-            whitePieces[c2]++;
+            pieces[c1]++;
+            pieces[c2]++;
 
             break;
 
@@ -414,10 +418,10 @@ void unmakeMove(Move m)
 
             zobristHashUpdate ^= (coordDeath != 0) * get_zobrist_hash(deathSqC, coordinator, toPlay);
 
-            whitePieces[c1]++;
-            whitePieces[c2]++;
-            whitePieces[c3]++;
-            whitePieces[(coordDeath > 0) * coordinator]++;
+            pieces[c1]++;
+            pieces[c2]++;
+            pieces[c3]++;
+            pieces[(coordDeath > 0) * coordinator]++;
 
             break;
 
@@ -431,7 +435,7 @@ void unmakeMove(Move m)
 
             zobristHashUpdate ^= (c1 != 0) * get_zobrist_hash(coordinateSq, c1, toPlay);
 
-            whitePieces[c1]++;
+            pieces[c1]++;
 
             break;
 
@@ -444,7 +448,7 @@ void unmakeMove(Move m)
 
             zobristHashUpdate ^= (c1 != 0) * get_zobrist_hash(coordinateSq, c1, toPlay);
 
-            whitePieces[c1]++;
+            pieces[c1]++;
 
             break;
 
@@ -509,13 +513,13 @@ void unmakeMove(Move m)
             set_piece(notToPlay, springer, c8, spriCaptSq);
             zobristHashUpdate ^= c8 * get_zobrist_hash(spriCaptSq, springer, toPlay);
 
-            whitePieces[c1]++;
-            whitePieces[c2]++;
-            whitePieces[c3]++;
-            whitePieces[c4]++;
-            whitePieces[(c5 || c6) * coordinator]++;
-            whitePieces[c7 * retractor]++;
-            whitePieces[c8 * springer]++;
+            pieces[c1]++;
+            pieces[c2]++;
+            pieces[c3]++;
+            pieces[c4]++;
+            pieces[(c5 || c6) * coordinator]++;
+            pieces[c7 * retractor]++;
+            pieces[c8 * springer]++;
 
             break;
     }
