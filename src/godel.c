@@ -17,11 +17,11 @@ int kingSquareLookup[TWO_KING_POSS][2];
 int whitePieces[7] =
 {
     0, // empty, should always be 0
-    0, // straddlers
+    1, // straddlers
     0, // retractor
     0, // springer
-    0, // coordinator
-    1, // immobilizer
+    1, // coordinator
+    0, // immobilizer
     0  // chameleon
 };
 int blackPieces[7] =
@@ -30,9 +30,9 @@ int blackPieces[7] =
     0, // straddlers
     0, // retractor
     0, // springer
-    1, // coordinator
+    0, // coordinator
     0, // immobilizer
-    0  // chameleon
+    1  // chameleon
 };
 
 int* pieceComp[2] =

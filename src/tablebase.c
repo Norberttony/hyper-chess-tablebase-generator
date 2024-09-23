@@ -9,6 +9,10 @@ uint32_t *whiteWins;
 uint32_t *blackLoses;
 uint32_t *blackTemp;
 
+struct vector newWhiteWins;
+struct vector newBlackTemp;
+struct vector newBlackLoses;
+
 
 const int pieceTypeMasks[] =
 {
@@ -36,6 +40,10 @@ int allocTablebase()
     whiteWins  = (uint32_t*)malloc(sizeof(uint32_t) * fileSize);
     blackLoses = (uint32_t*)malloc(sizeof(uint32_t) * fileSize);
     blackTemp  = (uint32_t*)malloc(sizeof(uint32_t) * fileSize);
+
+    newWhiteWins = v_init(64);
+    newBlackTemp = v_init(64);
+    newBlackLoses = v_init(64);
 
     if (!whiteWins || !blackLoses || !blackTemp)
     {
@@ -77,12 +85,14 @@ void initTablebase()
         if (isCheckmate())
         {
             set_bit32_arr(blackLoses, i);
+            v_pushBack(&newBlackLoses, (void*)i);
 
             Godel s = getThirdPieceSymmetryGodel(i);
 
             if (s)
             {
                 set_bit32_arr(blackLoses, s);
+                v_pushBack(&newBlackLoses, (void*)s);
             }
         }
 
@@ -119,6 +129,7 @@ void initTablebase()
             if (get_bit32_arr(ref, g))
             {
                 set_bit32_arr(whiteWins, i);
+                v_pushBack(&newBlackLoses, (void*)i);
                 unmakeMove(c);
                 break;
             }
@@ -150,37 +161,41 @@ int tablebaseStep(int depth)
 
     toPlay = black;
     notToPlay = white;
-    for (Godel i = 0; i < possibilities; i++)
+    while(newBlackLoses.size)
     {
-        if (get_bit32_arr(blackLoses, i) && loadGodelNumber(i))
-        {
-            // white has a mate in all predecessor positions
+        Godel i = (Godel)v_popBack(&newBlackLoses);
+        loadGodelNumber(i);
 
+        // white has a mate in all predecessor positions
+        toPlay = black;
+        notToPlay = white;
+
+        Unmove unmoves[MAX_MOVES];
+        int size = generateUnmoves((Unmove*)unmoves);
+        for (int j = 0; j < size; j++)
+        {
+            // don't unmake a move that leaves opponent king in check.
             toPlay = black;
             notToPlay = white;
+            
+            Unmove unmove = unmoves[j];
+            makeUnmove(unmove);
 
-            Unmove unmoves[MAX_MOVES];
-            int size = generateUnmoves((Unmove*)unmoves);
-            for (int j = 0; j < size; j++)
+            toPlay = white;
+            notToPlay = black;
+            if (isAttackingKing())
             {
-                // don't unmake a move that leaves opponent king in check.
-                toPlay = black;
-                notToPlay = white;
-                
-                Unmove unmove = unmoves[j];
-                makeUnmove(unmove);
+                unmakeUnmove(unmove);
+                continue;
+            }
 
-                toPlay = white;
-                notToPlay = black;
-                if (isAttackingKing())
-                {
-                    unmakeUnmove(unmove);
-                    continue;
-                }
+            // check if a new position was added
+            Godel changed = getGodelNumber();
 
-                // check if a new position was added
-                Godel changed = getGodelNumber();
-                newPosition = newPosition || !get_bit32_arr(whiteWins, changed);
+            if (!get_bit32_arr(whiteWins, changed))
+            {
+                newPosition = 1;
+                v_pushBack(&newWhiteWins, (void*)changed);
 
                 // mark this position as winnable!
                 set_bit32_arr(whiteWins, changed);
@@ -189,10 +204,11 @@ int tablebaseStep(int depth)
                 if (s)
                 {
                     set_bit32_arr(whiteWins, s);
+                    v_pushBack(&newWhiteWins, (void*)s);
                 }
-
-                unmakeUnmove(unmove);
             }
+
+            unmakeUnmove(unmove);
         }
     }
 
@@ -211,44 +227,46 @@ int tablebaseStep(int depth)
 
     // P3 reads whiteWins, generates black predecessor positions and stores them in temp. These
     // positions are black to play and lose if black was trying to lose.
-    for (Godel i = 0; i < possibilities; i++)
+    while (newWhiteWins.size)
     {
-        if (get_bit32_arr(whiteWins, i) && loadGodelNumber(i))
+        Godel i = (Godel)v_popBack(&newWhiteWins);
+        loadGodelNumber(i);
+
+        toPlay = white;
+        notToPlay = black;
+
+        Unmove unmoves[MAX_MOVES];
+        int size = generateUnmoves((Unmove*)unmoves);
+        for (int j = 0; j < size; j++)
         {
+            // don't unmake a move that leaves opponent king in check.
             toPlay = white;
             notToPlay = black;
+            
+            Unmove unmove = unmoves[j];
+            makeUnmove(unmove);
 
-            Unmove unmoves[MAX_MOVES];
-            int size = generateUnmoves((Unmove*)unmoves);
-            for (int j = 0; j < size; j++)
+            toPlay = black;
+            notToPlay = white;
+            if (isAttackingKing())
             {
-                // don't unmake a move that leaves opponent king in check.
-                toPlay = white;
-                notToPlay = black;
-                
-                Unmove unmove = unmoves[j];
-                makeUnmove(unmove);
-
-                toPlay = black;
-                notToPlay = white;
-                if (isAttackingKing())
-                {
-                    unmakeUnmove(unmove);
-                    continue;
-                }
-
-                // mark this position as losable
-                Godel g = getGodelNumber();
-                set_bit32_arr(blackTemp, g);
-
-                Godel s = getThirdPieceSymmetryGodel(g);
-                if (s)
-                {
-                    set_bit32_arr(blackTemp, s);
-                }
-
                 unmakeUnmove(unmove);
+                continue;
             }
+
+            // mark this position as losable
+            Godel g = getGodelNumber();
+            set_bit32_arr(blackTemp, g);
+            v_pushBack(&newBlackTemp, (void*)g);
+
+            Godel s = getThirdPieceSymmetryGodel(g);
+            if (s)
+            {
+                set_bit32_arr(blackTemp, s);
+                v_pushBack(&newBlackTemp, (void*)s);
+            }
+
+            unmakeUnmove(unmove);
         }
     }
 
@@ -258,65 +276,77 @@ int tablebaseStep(int depth)
     // successor positions are in whiteWins. If so, that position is added to blackLoses
     toPlay = black;
     notToPlay = white;
-    for (Godel i = 0; i < possibilities; i++)
+    while (newBlackTemp.size)
     {
-        if (get_bit32_arr(blackTemp, i) && loadGodelNumber(i))
+        Godel i = (Godel)v_popBack(&newBlackTemp);
+        loadGodelNumber(i);
+        Move moves[MAX_MOVES];
+        int size = generateMoves((Move*)moves, 0);
+
+        int alwaysWinning = 1;
+        for (int j = 0; j < size; j++)
         {
-            Move moves[MAX_MOVES];
-            int size = generateMoves((Move*)moves, 0);
+            Move move = moves[j];
+            makeMove(move);
 
-            int alwaysWinning = 1;
-            for (int j = 0; j < size; j++)
+            if (isAttackingKing())
             {
-                Move move = moves[j];
-                makeMove(move);
+                unmakeMove(move);
+                continue;
+            }
 
-                if (isAttackingKing())
+            Godel changed = getGodelNumber();
+
+            if (move & move_captMask)
+            {
+                // check the reference to see if this position is still winning for white.
+                uint32_t* ref = getEndgameRef(1);
+                if (!ref)
                 {
+                    prettyPrintBoard();
+                    puts("MISSING ENDGAME FILE FOR CURRENT PIECE COMPOSITION");
+                    prettyPrintMove(move);
+
                     unmakeMove(move);
-                    continue;
+                    puts("Previous position:");
+                    prettyPrintBoard();
+
+                    puts("Godel board:");
+                    loadGodelNumber(i);
+                    prettyPrintBoard();
+                    printf("g: %llu\n", i);
+
+                    exit(1);
                 }
 
-                Godel changed = getGodelNumber();
-
-                if (move & move_captMask)
-                {
-                    // check the reference to see if this position is still winning for white.
-                    uint32_t* ref = getEndgameRef(1);
-                    if (!ref)
-                    {
-                        prettyPrintBoard();
-                        puts("MISSING ENDGAME FILE FOR CURRENT PIECE COMPOSITION");
-                        exit(1);
-                    }
-
-                    if (!get_bit32_arr(ref, changed))
-                    {
-                        alwaysWinning = 0;
-                        unmakeMove(move);
-                        break;
-                    }
-                }
-                else if (!get_bit32_arr(whiteWins, changed))
+                if (!get_bit32_arr(ref, changed))
                 {
                     alwaysWinning = 0;
                     unmakeMove(move);
                     break;
                 }
-
+            }
+            else if (!get_bit32_arr(whiteWins, changed))
+            {
+                alwaysWinning = 0;
                 unmakeMove(move);
+                break;
             }
 
-            if (alwaysWinning && (size > 0 || isAttackingKing()))
-            {
-                newPosition = newPosition || !get_bit32_arr(blackLoses, i);
-                set_bit32_arr(blackLoses, i);
+            unmakeMove(move);
+        }
 
-                Godel s = getThirdPieceSymmetryGodel(i);
-                if (s)
-                {
-                    set_bit32_arr(blackLoses, s);
-                }
+        if (alwaysWinning && (size > 0 || isAttackingKing()) && !get_bit32_arr(blackLoses, i))
+        {
+            newPosition = 1;
+            set_bit32_arr(blackLoses, i);
+            v_pushBack(&newBlackLoses, (void*)i);
+
+            Godel s = getThirdPieceSymmetryGodel(i);
+            if (s)
+            {
+                set_bit32_arr(blackLoses, s);
+                v_pushBack(&newBlackLoses, (void*)s);
             }
         }
     }

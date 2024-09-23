@@ -26,6 +26,7 @@ int main(void)
         return -1;
     }
 
+    /*
     initTablebase();
 
 
@@ -36,21 +37,21 @@ int main(void)
     }
 
     createDTZFile(depth);
+    */
 
     // read the DTZW file
     DTZW = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTZWFile = fopen("DTZW.bin", "rb");
+    FILE* DTZWFile = fopen("KPRvKB-DTZW.bin", "rb");
     fread(DTZW, sizeof(unsigned short int), possibilities, DTZWFile);
     fclose(DTZWFile);
 
     // read the DTML file
     DTZL = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTZLFile = fopen("DTZL.bin", "rb");
+    FILE* DTZLFile = fopen("KPRvKB-DTZL.bin", "rb");
     fread(DTZL, sizeof(unsigned short int), possibilities, DTZLFile);
     fclose(DTZLFile);
 
-    //loadGodelNumber(15574);
-    loadFEN("4k3/8/8/8/8/8/8/N2K3N w -");
+    loadFEN("b3k3/8/8/8/8/8/8/PRK5 w -");
     printf("%llu\n", getGodelNumber());
 
     userDemo();

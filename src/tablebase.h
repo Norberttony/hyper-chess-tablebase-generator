@@ -5,6 +5,7 @@
 #include "unmove.h"
 #include "move.h"
 #include "perft.h"
+#include "vector.h"
 
 
 #define set_bit32_arr(arr, i) (arr[i >> 5] |= 1 << (i & 31))
