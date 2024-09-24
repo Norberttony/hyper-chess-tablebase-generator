@@ -9,6 +9,8 @@
 
 void initMoveGen(void);
 
+void test(void);
+
 void userDemo();
 
 unsigned short int* DTZW;
@@ -26,7 +28,6 @@ int main(void)
         return -1;
     }
 
-    /*
     initTablebase();
 
 
@@ -37,17 +38,16 @@ int main(void)
     }
 
     createDTZFile(depth);
-    */
 
     // read the DTZW file
     DTZW = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTZWFile = fopen("KPRvKB-DTZW.bin", "rb");
+    FILE* DTZWFile = fopen("DTZW.bin", "rb");
     fread(DTZW, sizeof(unsigned short int), possibilities, DTZWFile);
     fclose(DTZWFile);
 
     // read the DTML file
     DTZL = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTZLFile = fopen("KPRvKB-DTZL.bin", "rb");
+    FILE* DTZLFile = fopen("DTZL.bin", "rb");
     fread(DTZL, sizeof(unsigned short int), possibilities, DTZLFile);
     fclose(DTZLFile);
 

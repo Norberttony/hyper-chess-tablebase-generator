@@ -161,8 +161,6 @@ void makeUnmove(Unmove unmove)
     notToPlay = !notToPlay * 8;
 }
 
-// an unbelievably terrible approach, but should be alright given that only one unmove is
-// considered at any one time
 void unmakeUnmove(Unmove unmove)
 {
     int type = unmove & unmove_typeMask;

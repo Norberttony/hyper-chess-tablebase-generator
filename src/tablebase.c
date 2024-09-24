@@ -129,8 +129,19 @@ void initTablebase()
             if (get_bit32_arr(ref, g))
             {
                 set_bit32_arr(whiteWins, i);
-                v_pushBack(&newBlackLoses, (void*)i);
+                v_pushBack(&newWhiteWins, (void*)i);
+
                 unmakeMove(c);
+
+                // third piece symmetry godel calculated AFTER unmakeMove since i comes from
+                // before the move was made.
+                Godel s = getThirdPieceSymmetryGodel(i);
+                if (s)
+                {
+                    set_bit32_arr(whiteWins, s);
+                    v_pushBack(&newWhiteWins, (void*)s);
+                }
+                
                 break;
             }
 
@@ -161,10 +172,15 @@ int tablebaseStep(int depth)
 
     toPlay = black;
     notToPlay = white;
-    while(newBlackLoses.size)
+    while (newBlackLoses.size)
     {
         Godel i = (Godel)v_popBack(&newBlackLoses);
-        loadGodelNumber(i);
+        int success = loadGodelNumber(i);
+        if (!success)
+        {
+            prettyPrintBoard();
+            printf("Illegal godel position %llu added to newBlackLoses.\n");
+        }
 
         // white has a mate in all predecessor positions
         toPlay = black;
@@ -230,7 +246,12 @@ int tablebaseStep(int depth)
     while (newWhiteWins.size)
     {
         Godel i = (Godel)v_popBack(&newWhiteWins);
-        loadGodelNumber(i);
+        int success = loadGodelNumber(i);
+        if (!success)
+        {
+            prettyPrintBoard();
+            printf("Illegal godel position %llu added to newWhiteWins.\n");
+        }
 
         toPlay = white;
         notToPlay = black;
@@ -256,14 +277,18 @@ int tablebaseStep(int depth)
 
             // mark this position as losable
             Godel g = getGodelNumber();
-            set_bit32_arr(blackTemp, g);
-            v_pushBack(&newBlackTemp, (void*)g);
 
-            Godel s = getThirdPieceSymmetryGodel(g);
-            if (s)
+            if (!get_bit32_arr(blackTemp, g))
             {
-                set_bit32_arr(blackTemp, s);
-                v_pushBack(&newBlackTemp, (void*)s);
+                set_bit32_arr(blackTemp, g);
+                v_pushBack(&newBlackTemp, (void*)g);
+
+                Godel s = getThirdPieceSymmetryGodel(g);
+                if (s)
+                {
+                    set_bit32_arr(blackTemp, s);
+                    v_pushBack(&newBlackTemp, (void*)s);
+                }
             }
 
             unmakeUnmove(unmove);

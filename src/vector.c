@@ -19,6 +19,13 @@ void v_pushBack(struct vector* v, void* item)
 
         void** newArr = malloc(sizeof(void*) * v->cap);
 
+        if (!newArr)
+        {
+            puts("ERROR when resizing vector");
+            printf("Attempted to create a vector of size %d.\n", v->cap);
+            exit(-1);
+        }
+
         // copy values from old array
         for (int i = 0; i < v->size; i++)
         {
@@ -36,5 +43,28 @@ void v_pushBack(struct vector* v, void* item)
 
 void* v_popBack(struct vector* v)
 {
+    if (v->size * 4 <= v->cap)
+    {
+        // decrease size of the vector by one half
+        v->cap /= 2;
+
+        void** newArr = malloc(sizeof(void*) * v->cap);
+
+        if (!newArr)
+        {
+            puts("ERROR when resizing vector down");
+            exit(-1);
+        }
+
+        // copy values from old array
+        for (int i = 0; i < v->size; i++)
+        {
+            newArr[i] = v->arr[i];
+        }
+
+        free(v->arr);
+        v->arr = newArr;
+    }
+
     return v->arr[--v->size];
 }

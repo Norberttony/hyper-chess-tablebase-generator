@@ -210,7 +210,7 @@ int loadGodelNumber(Godel godel)
         }
         else if (blackPieces[i] == 2)
         {
-            U64 pieces = perms[blackPieces[i]][godel & _64Cr[blackPieces[i]]];
+            U64 pieces = perms[blackPieces[i]][godel % _64Cr[blackPieces[i]]];
             int sq1 = transform[pop_lsb(pieces)];
             int sq2 = transform[pop_lsb(pieces & (pieces - 1))];
 
@@ -249,14 +249,14 @@ Godel getGodelNumber(void)
     // assumes that there is at most one of each piece type
     // fetch white pieces
     Godel gw = 0;
-    int o = 0;
+    int o = 1;
     for (int i = 1; i < 7; i++)
     {
         if (whitePieces[i] == 1)
         {
             int pieceSq = pop_lsb(position[white + i]);
-            gw += transform[pieceSq] * (o + !o);
-            o += _64Cr[1];
+            gw += transform[pieceSq] * o;
+            o *= _64Cr[1];
         }
         else if (whitePieces[i] == 2)
         {
@@ -264,8 +264,8 @@ Godel getGodelNumber(void)
             int sq1 = pop_lsb(pieces);
             int sq2 = pop_lsb(pieces & (pieces - 1));
             U64 board = 1ULL << transform[sq1] | 1ULL << transform[sq2];
-            gw += getPerm2Index(board);
-            o += _64Cr[2];
+            gw += getPerm2Index(board) * o;
+            o *= _64Cr[2];
         }
     }
 
@@ -277,7 +277,7 @@ Godel getGodelNumber(void)
         {
             int pieceSq = pop_lsb(position[black + i]);
             gb += transform[pieceSq] * (o + !o);
-            o += _64Cr[1];
+            o *= _64Cr[1];
         }
         else if (blackPieces[i] == 2)
         {
@@ -285,8 +285,8 @@ Godel getGodelNumber(void)
             int sq1 = pop_lsb(pieces);
             int sq2 = pop_lsb(pieces & (pieces - 1));
             U64 board = 1ULL << transform[sq1] | 1ULL << transform[sq2];
-            gb += getPerm2Index(board);
-            o += _64Cr[2];
+            gb += getPerm2Index(board) * o;
+            o *= _64Cr[2];
         }
     }
 
