@@ -17,10 +17,10 @@ int kingSquareLookup[TWO_KING_POSS][2];
 int whitePieces[7] =
 {
     0, // empty, should always be 0
-    1, // straddlers
+    2, // straddlers
     0, // retractor
-    0, // springer
-    1, // coordinator
+    1, // springer
+    0, // coordinator
     0, // immobilizer
     0  // chameleon
 };
@@ -32,7 +32,7 @@ int blackPieces[7] =
     0, // springer
     0, // coordinator
     0, // immobilizer
-    1  // chameleon
+    0  // chameleon
 };
 
 int* pieceComp[2] =
@@ -312,22 +312,24 @@ Godel getThirdPieceSymmetryGodel(Godel g)
     Godel symmG = 0;
     g /= TWO_KING_POSS;
 
+    int o = 1;
+
     // check white pieces
     for (int i = 1; i < 7; i++)
     {
         if (whitePieces[i] == 1)
         {
-            symmG <<= 6;
-            symmG += reflectA8H1[g & 63];
-            g >>= 6;
+            symmG += reflectA8H1[g % _64Cr[1]] * o;
+            g /= _64Cr[1];
+            o *= _64Cr[1];
         }
         else if (whitePieces[i] == 2)
         {
-            symmG *= _64Cr[2];
             U64 board = position[white + i];
             U64 newBoard = 1ULL << reflectA8H1[pop_lsb(board)] | 1ULL << reflectA8H1[pop_lsb(board & (board - 1))];
-            symmG += getPerm2Index(newBoard);
+            symmG += getPerm2Index(newBoard) * o;
             g /= _64Cr[2];
+            o *= _64Cr[2];
         }
     }
 
@@ -336,17 +338,17 @@ Godel getThirdPieceSymmetryGodel(Godel g)
     {
         if (blackPieces[i] == 1)
         {
-            symmG <<= 6;
-            symmG += reflectA8H1[g & 63];
-            g >>= 6;
+            symmG += reflectA8H1[g % _64Cr[1]] * o;
+            g /= _64Cr[1];
+            o *= _64Cr[1];
         }
         else if (blackPieces[i] == 2)
         {
-            symmG *= _64Cr[2];
             U64 board = position[black + i];
             U64 newBoard = 1ULL << reflectA8H1[pop_lsb(board)] | 1ULL << reflectA8H1[pop_lsb(board & (board - 1))];
-            symmG += getPerm2Index(newBoard);
+            symmG += getPerm2Index(newBoard) * o;
             g /= _64Cr[2];
+            o *= _64Cr[2];
         }
     }
 

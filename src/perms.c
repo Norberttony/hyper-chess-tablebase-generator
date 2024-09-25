@@ -26,6 +26,10 @@ void initPerms(void)
         int idx = 0;
         while (start)
         {
+            if (getPerm2Index(start) != idx)
+            {
+                puts("ERROR SETTING UP PERM 2");
+            }
             perms[i][idx++] = start;
             start = nextPerm(start);
         }

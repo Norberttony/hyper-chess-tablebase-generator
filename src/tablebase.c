@@ -179,7 +179,7 @@ int tablebaseStep(int depth)
         if (!success)
         {
             prettyPrintBoard();
-            printf("Illegal godel position %llu added to newBlackLoses.\n");
+            printf("Illegal godel position %llu added to newBlackLoses.\n", i);
         }
 
         // white has a mate in all predecessor positions
@@ -250,7 +250,7 @@ int tablebaseStep(int depth)
         if (!success)
         {
             prettyPrintBoard();
-            printf("Illegal godel position %llu added to newWhiteWins.\n");
+            printf("Illegal godel position %llu added to newWhiteWins.\n", i);
         }
 
         toPlay = white;

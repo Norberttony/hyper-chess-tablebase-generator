@@ -83,7 +83,12 @@ int generateUnmoves(Unmove* list)
     if (immBoard)
     {
         int fromSq = pop_lsb(immBoard);
-        U64 moves = (get_rook_attacks(fromSq, totalBoard) | get_bishop_attacks(fromSq, totalBoard)) & ~(totalBoard | oppImmInfl);
+
+        U64 opChams = position[toPlay + chameleon];
+        U64 opCham2 = opChams & (opChams - 1);
+        U64 opposingChamInfl = (opChams > 0) * kingMoves[pop_lsb(opChams)] | (opCham2 > 0) * kingMoves[pop_lsb(opCham2)];
+
+        U64 moves = (get_rook_attacks(fromSq, totalBoard) | get_bishop_attacks(fromSq, totalBoard)) & ~(totalBoard | oppImmInfl | opposingChamInfl);
 
         size += extractMoves(fromSq << 3 | immobilizer, moves, &list[size]);
     }
@@ -119,8 +124,24 @@ int generateUnmoves(Unmove* list)
     U64 retractorBoard = position[notToPlay + retractor];
     if (retractorBoard)
     {
+        int retractorLeftBounds = (retractorBoard & 0xfcfcfcfcfcfcfcfc) > 0;
+        int retractorRightBounds = (retractorBoard & 0x3f3f3f3f3f3f3f3f) > 0;
+
         int fromSq = pop_lsb(retractorBoard);
         U64 moves = (get_rook_attacks(fromSq, totalBoard) | get_bishop_attacks(fromSq, totalBoard)) & ~(totalBoard | oppImmInfl);
+
+        moves &= ~(
+            (retractorLeftBounds  * retractorBoard >> 18 & position[toPlay]) << 9 |
+            (retractorLeftBounds  * retractorBoard >>  2 & position[toPlay]) << 1 |
+            (retractorLeftBounds  * retractorBoard << 14 & position[toPlay]) >> 7 |
+
+            (retractorRightBounds * retractorBoard << 18 & position[toPlay]) >> 9 |
+            (retractorRightBounds * retractorBoard <<  2 & position[toPlay]) >> 1 |
+            (retractorRightBounds * retractorBoard >> 14 & position[toPlay]) << 7 |
+
+            (retractorBoard << 16 & position[toPlay]) >> 8 |
+            (retractorBoard >> 16 & position[toPlay]) << 8 
+        );
 
         size += extractMoves(fromSq << 3 | retractor, moves, &list[size]);
     }

@@ -9,8 +9,6 @@
 
 void initMoveGen(void);
 
-void test(void);
-
 void userDemo();
 
 unsigned short int* DTZW;
@@ -22,6 +20,18 @@ int main(void)
     initMoveGen();
     populateTransforms();
     populateGodelLookups();
+
+    Godel i = 19638303;
+    int success = loadGodelNumber(i);
+    prettyPrintBoard();
+    printf("Godel #: %llu, success? %d\n", i, success);
+    
+    Godel s = getThirdPieceSymmetryGodel(i);
+    success = loadGodelNumber(s);
+    prettyPrintBoard();
+    printf("Godel #: %llu success? %d\n", s, success);
+
+    return 0;
 
     if (!allocTablebase())
     {
@@ -41,17 +51,17 @@ int main(void)
 
     // read the DTZW file
     DTZW = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTZWFile = fopen("DTZW.bin", "rb");
+    FILE* DTZWFile = fopen("KUvKB-DTZW.bin", "rb");
     fread(DTZW, sizeof(unsigned short int), possibilities, DTZWFile);
     fclose(DTZWFile);
 
     // read the DTML file
     DTZL = (unsigned short int*)malloc(sizeof(unsigned short int) * possibilities);
-    FILE* DTZLFile = fopen("DTZL.bin", "rb");
+    FILE* DTZLFile = fopen("KUvKB-DTZL.bin", "rb");
     fread(DTZL, sizeof(unsigned short int), possibilities, DTZLFile);
     fclose(DTZLFile);
 
-    loadFEN("b3k3/8/8/8/8/8/8/PRK5 w -");
+    loadFEN("b4k2/8/8/8/8/8/8/U3K3 w -");
     printf("%llu\n", getGodelNumber());
 
     userDemo();
